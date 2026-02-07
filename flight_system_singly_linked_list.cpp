@@ -93,9 +93,9 @@ void displayMemoryUsage() {
     size_t totalMemory = staticMemory + dynamicMemory;
     
     cout << "\n===== TOTAL MEMORY USAGE =====\n";
-    cout << "Static memory (arrays + structs)  : " << staticMemory << " bytes\n";
-    cout << "Dynamic memory (all strings)       : " << dynamicMemory << " bytes\n";
-    cout << "Total approximate memory usage     : " << totalMemory << " bytes";
+    cout << "Static memory (globals + constants + lookup array) : " << staticMemory << " bytes\n";
+    cout << "Dynamic memory (linked list nodes)                 : " << dynamicMemory << " bytes\n";
+    cout << "Total approximate memory usage                     : " << totalMemory << " bytes";
     cout << " (" << fixed << setprecision(2) << (totalMemory / 1024.0) << " KB, ";
     cout << (totalMemory / (1024.0 * 1024.0)) << " MB)\n";
 }
@@ -198,6 +198,8 @@ bool parseCSVLine(const string& line, Passenger& p) {
 
 /* -------------------- CSV LOADING -------------------- */
 void loadFromCSV(const string& filepath = "Flite_passenger_Dataset.csv") {
+    auto start = chrono::high_resolution_clock::now();
+
     string path = filepath;
 
     // If no filepath provided, ask user
@@ -211,9 +213,6 @@ void loadFromCSV(const string& filepath = "Flite_passenger_Dataset.csv") {
         cout << "CSV file not found. Please check the path.\n";
         return;
     }
-
-    // START TIMING - after file is opened successfully
-    auto start = chrono::high_resolution_clock::now();
 
     // Faster duplicate checking for passenger IDs
     static bool seenID[MAX_PASSENGER_ID + 1] = { false };
@@ -267,7 +266,6 @@ void loadFromCSV(const string& filepath = "Flite_passenger_Dataset.csv") {
 
     file.close();
 
-    // END TIMING - after all processing is complete
     auto end = chrono::high_resolution_clock::now();
     auto durationMs = chrono::duration_cast<chrono::milliseconds>(end - start).count();
     double durationSec = durationMs / 1000.0;
@@ -281,9 +279,6 @@ void loadFromCSV(const string& filepath = "Flite_passenger_Dataset.csv") {
 
 /* -------------------- DISPLAY MANIFEST BY TRIP -------------------- */
 void displayManifestByTrip(int tripID) {
-    // START TIMING - after input is received
-    auto start = chrono::high_resolution_clock::now();
-
     Node* temp = head;
     bool found = false;
     int passengerCount = 0;
@@ -303,31 +298,21 @@ void displayManifestByTrip(int tripID) {
     }
 
     if (!found)
-        cout << "No passengers found for Trip " << tripID << ".\n";
-
-    // END TIMING
-    auto end = chrono::high_resolution_clock::now();
-    auto durationMs = chrono::duration_cast<chrono::milliseconds>(end - start).count();
-    double durationSec = durationMs / 1000.0;
-
-    cout << "\nOperation Time: " << durationMs << " ms"
-         << " (" << fixed << setprecision(3) << durationSec << " seconds)\n";
+        cout << "No passengers found for this trip.\n";
 }
 
-/* -------------------- DISPLAY SEATING CHART -------------------- */
+/* -------------------- SEATING CHART -------------------- */
 void displaySeatingForTrip(int tripID) {
-    // START TIMING - after input is received
-    auto start = chrono::high_resolution_clock::now();
-
     bool seats[ROWS][COLS] = { false };
     Passenger* seatData[ROWS][COLS] = { nullptr };
-
     Node* temp = head;
+
     while (temp) {
         if (temp->data.tripID == tripID) {
             int r = temp->data.seatRow;
             int c = seatColToIndex(temp->data.seatCol);
-            if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
+
+            if (isValidSeatRow(r) && c >= 0 && c < COLS) {
                 seats[r][c] = true;
                 seatData[r][c] = &(temp->data);
             }
@@ -335,8 +320,7 @@ void displaySeatingForTrip(int tripID) {
         temp = temp->next;
     }
 
-    cout << "\n--- Seating Chart for Trip " << tripID << " ---\n";
-    cout << "    A       B       C       D       E       F\n";
+    cout << "\nSeating Chart for Trip " << tripID << "\n\n";
 
     for (int r = 0; r < ROWS; r++) {
         cout << "R" << (r + 1) << ": ";
@@ -352,14 +336,6 @@ void displaySeatingForTrip(int tripID) {
         }
         cout << endl;
     }
-
-    // END TIMING
-    auto end = chrono::high_resolution_clock::now();
-    auto durationMs = chrono::duration_cast<chrono::milliseconds>(end - start).count();
-    double durationSec = durationMs / 1000.0;
-
-    cout << "\nOperation Time: " << durationMs << " ms"
-         << " (" << fixed << setprecision(3) << durationSec << " seconds)\n";
 }
 
 /* -------------------- LIST PASSENGERS BY CLASS -------------------- */
@@ -375,9 +351,6 @@ void listPassengersByClass() {
     char classType[10];
     cout << "Enter Class (Economy/Business/First): ";
     cin >> classType;
-
-    // START TIMING - after all inputs are collected
-    auto start = chrono::high_resolution_clock::now();
 
     Node* temp = head;
     bool found = false;
@@ -399,14 +372,6 @@ void listPassengersByClass() {
 
     if (!found)
         cout << "No passengers found in this class for this trip.\n";
-
-    // END TIMING
-    auto end = chrono::high_resolution_clock::now();
-    auto durationMs = chrono::duration_cast<chrono::milliseconds>(end - start).count();
-    double durationSec = durationMs / 1000.0;
-
-    cout << "\nOperation Time: " << durationMs << " ms"
-         << " (" << fixed << setprecision(3) << durationSec << " seconds)\n";
 }
 
 /* -------------------- ADD PASSENGER (MAKE RESERVATION) -------------------- */
@@ -482,19 +447,8 @@ void insertPassenger() {
         return;
     }
 
-    // START TIMING - after all inputs are validated and collected
-    auto start = chrono::high_resolution_clock::now();
-
     appendPassenger(p);
-
-    // END TIMING
-    auto end = chrono::high_resolution_clock::now();
-    auto durationMs = chrono::duration_cast<chrono::milliseconds>(end - start).count();
-    double durationSec = durationMs / 1000.0;
-
     cout << "Reservation made successfully.\n";
-    cout << "\nOperation Time: " << durationMs << " ms"
-         << " (" << fixed << setprecision(3) << durationSec << " seconds)\n";
 }
 
 /* -------------------- DELETE PASSENGER (CANCEL RESERVATION) -------------------- */
@@ -507,9 +461,6 @@ void deletePassenger() {
         return;
     }
 
-    // START TIMING - after input is collected
-    auto start = chrono::high_resolution_clock::now();
-
     Node* temp = head;
     Node* prev = nullptr;
 
@@ -519,13 +470,7 @@ void deletePassenger() {
     }
 
     if (!temp) {
-        auto end = chrono::high_resolution_clock::now();
-        auto durationMs = chrono::duration_cast<chrono::milliseconds>(end - start).count();
-        double durationSec = durationMs / 1000.0;
-
         cout << "Passenger not found.\n";
-        cout << "\nOperation Time: " << durationMs << " ms"
-             << " (" << fixed << setprecision(3) << durationSec << " seconds)\n";
         return;
     }
 
@@ -541,15 +486,7 @@ void deletePassenger() {
     dynamicMemory -= sizeof(Node);
 
     delete temp;
-
-    // END TIMING
-    auto end = chrono::high_resolution_clock::now();
-    auto durationMs = chrono::duration_cast<chrono::milliseconds>(end - start).count();
-    double durationSec = durationMs / 1000.0;
-
     cout << "Reservation cancelled successfully.\n";
-    cout << "\nOperation Time: " << durationMs << " ms"
-         << " (" << fixed << setprecision(3) << durationSec << " seconds)\n";
 }
 
 /* -------------------- SEARCH PASSENGER -------------------- */
@@ -562,11 +499,9 @@ void searchPassengerByID() {
         return;
     }
 
-    // START TIMING - after input is collected, before search begins
     auto start = chrono::high_resolution_clock::now();
     Node* result = searchPassenger(id);
     auto end = chrono::high_resolution_clock::now();
-    // END TIMING
 
     auto durationMs = chrono::duration_cast<chrono::milliseconds>(end - start).count();
     double durationSec = durationMs / 1000.0;
@@ -611,6 +546,8 @@ int main() {
             clearInput();
             continue;
         }
+
+        auto start = chrono::high_resolution_clock::now();
 
         switch (choice) {
         case 1: {
@@ -661,8 +598,13 @@ int main() {
             cout << "Invalid choice.\n";
         }
 
-        // Display memory usage after each operation (except exit)
+        auto end = chrono::high_resolution_clock::now();
+        auto durationMs = chrono::duration_cast<chrono::milliseconds>(end - start).count();
+        double durationSec = durationMs / 1000.0;
+
         if (choice != 0 && choice >= 1 && choice <= 6) {
+            cout << "\nTime taken for Menu Operation: " << fixed << setprecision(3) 
+                 << durationSec << " seconds\n";
             displayMemoryUsage();
         }
 
